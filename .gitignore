@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.scratch/
+._*
+.DS_Store
+docs/PLAN.md
+docs/PROGRESS.md

@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Storage dump</title>
+<script>
+// Everything this origin keeps, as plain JSON: localStorage, then every IndexedDB database, store and record.
+async function digest(buf) {
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+  return Array.from(h.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('');
+}
+async function plain(v) {
+  if (v instanceof Blob) return { blob: v.type, size: v.size, sha: await digest(await v.arrayBuffer()) };
+  if (v instanceof ArrayBuffer) return { buffer: v.byteLength, sha: await digest(v) };
+  if (ArrayBuffer.isView(v)) return { view: v.constructor.name, sha: await digest(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)) };
+  if (Array.isArray(v)) return Promise.all(v.map(plain));
+  if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v).sort()) o[k] = await plain(v[k]); return o; }
+  return v;
+}
+const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+window.dump = async () => {
+  const ls = {};
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls[k] = localStorage.getItem(k); }
+  const dbs = {};
+  for (const { name, version } of (await indexedDB.databases()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const db = await req(indexedDB.open(name));
+    const stores = {};
+    for (const s of [...db.objectStoreNames].sort()) {
+      const tx = db.transaction(s, 'readonly');
+      const keys = await req(tx.objectStore(s).getAllKeys());
+      const vals = await req(tx.objectStore(s).getAll());
+      stores[s] = await Promise.all(vals.map(async (v, i) => [keys[i], await plain(v)]));
+    }
+    db.close();
+    dbs[name + '@' + version] = stores;
+  }
+  return { localStorage: Object.fromEntries(Object.entries(ls).sort()), indexedDB: dbs };
+};
+</script>
