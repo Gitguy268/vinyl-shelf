@@ -1,5 +1,5 @@
 // Gate 0: can a click in a shelf page start an album in a framed player, from every kind of parent?
-// usage: bash tests/protocol/site.sh && node tests/protocol/gate0.mjs <player path under .scratch/site/> [engines]
+// usage: bash tests/protocol/site.sh && node tests/protocol/gate0.mjs <player path under .scratch/site/ or a live URL> [engines]
 import { chromium, firefox, webkit } from 'playwright';
 import path from 'node:path';
 import { serve } from './serve.mjs';
@@ -12,7 +12,7 @@ const parents = {
   'cross-origin': `http://localhost:${PORT}/${stubPath}`,
   'file': `file://${ROOT}/${stubPath}`,
 };
-const player = `http://127.0.0.1:${PORT}/${playerPath}`;
+const player = /^https?:/.test(playerPath) ? playerPath : `http://127.0.0.1:${PORT}/${playerPath}`;
 const engines = { chromium, firefox, webkit };
 const launchOpts = {
   chromium: { args: ['--autoplay-policy=document-user-activation-required', ...(process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : [])] },
