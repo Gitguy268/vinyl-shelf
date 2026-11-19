@@ -2,7 +2,7 @@ import { backCover, labelArt, time } from '../art/back';
 import { placeholderColours } from '../art/generate';
 import type { SpineText } from '../art/spine';
 import { packSides, searchAlbums, sortAlbums } from '../library/group';
-import { Library } from '../library/library';
+import { Library, isFinal } from '../library/library';
 import { readDrop, readFileList } from '../library/scan';
 import { prefs, type CoverRecord } from '../library/store';
 import type { Album, SortKey } from '../library/types';
@@ -85,7 +85,11 @@ export class App {
           : `Reading tags ${p.done} of ${p.total}`;
       byId('progress-bar').style.width = p.total ? `${(100 * p.done) / p.total}%` : '15%';
     });
-    lib.events.on('linked', () => this.updateRelink());
+    lib.events.on('linked', (linked) => {
+      this.updateRelink();
+      // Stand-in covers can now be replaced by the real ones in the folder.
+      if (linked) this.queueCovers();
+    });
     lib.events.on('status', (s) => announce(s));
     lib.events.on('cover', ({ id, cover }) => this.onCover(id, cover));
     byId('progress-cancel').addEventListener('click', () => lib.cancel());
@@ -126,7 +130,11 @@ export class App {
 
   /** Reads covers in the background, a few at a time, so every spine gets its real colours. */
   private queueCovers(): void {
-    this.coverQueue = this.albums.filter((a) => !this.covers.has(a.id));
+    const done = (a: Album): boolean => {
+      const c = this.covers.get(a.id);
+      return c !== undefined && isFinal(c, this.library.demo);
+    };
+    this.coverQueue = this.albums.filter((a) => !done(a));
     for (let i = this.coverRunning; i < COVER_WORKERS; i++) void this.coverWorker();
   }
 
@@ -134,7 +142,8 @@ export class App {
     this.coverRunning++;
     while (this.coverQueue.length > 0) {
       const album = this.coverQueue.shift()!;
-      if (this.covers.has(album.id)) continue;
+      const have = this.covers.get(album.id);
+      if (have && isFinal(have, this.library.demo)) continue;
       await this.library.cover(album);
       // Let the page breathe between covers.
       await new Promise((r) => setTimeout(r, 0));

@@ -94,9 +94,9 @@ export class Deck {
     this.setStatus(`Opening ${player.name}…`);
     if (inTab && tab) {
       this.tab = tab;
-      this.handoff.begin(tab, payload, tracks);
+      this.handoff.begin(tab, player.url, payload, tracks);
       // The tab was opened blank inside the click (pop-up rules); now it gets the player.
-      tab.location.href = shelfUrl(player.url);
+      tab.location.href = shelfUrl(player.url, location.href);
       this.panel.hidden = true;
       this.showNow();
       return;
@@ -109,8 +109,8 @@ export class Deck {
     this.frameBox.append(frame);
     this.frame = frame;
     // The window exists before it loads anything: point the hand-off at it first.
-    this.handoff.begin(frame.contentWindow!, payload, tracks);
-    frame.src = shelfUrl(player.url);
+    this.handoff.begin(frame.contentWindow!, player.url, payload, tracks);
+    frame.src = shelfUrl(player.url, location.href);
     this.panel.hidden = false;
     this.panel.classList.remove('tucked', 'full');
     this.now.hidden = true;

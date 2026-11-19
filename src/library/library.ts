@@ -27,6 +27,11 @@ type PermissionHandle = FileSystemDirectoryHandle & {
 
 const CONCURRENCY = 4;
 
+/** A cover that will not get better: a real one, or a made one after the folder was searched. */
+export function isFinal(cover: CoverRecord, demo: boolean): boolean {
+  return demo || cover.source !== 'made' || cover.checked === true;
+}
+
 /**
  * The music folder as the shelf sees it: an index of tags kept in IndexedDB, the files of this
  * visit (they cannot be kept between visits unless the browser lets the shelf keep the folder),
@@ -242,7 +247,11 @@ export class Library {
     if (!p) {
       p = this.findCover(album);
       this.covers.set(album.id, p);
-      void p.then((cover) => this.events.emit('cover', { id: album.id, cover }));
+      void p.then((cover) => {
+        // A cover made while the files could not be looked at is a stand-in: ask again later.
+        if (!isFinal(cover, this.demo)) this.covers.delete(album.id);
+        this.events.emit('cover', { id: album.id, cover });
+      });
     }
     return p;
   }
@@ -254,6 +263,7 @@ export class Library {
   }
 
   private async findCover(album: Album): Promise<CoverRecord> {
+    if (this.busy) return madeCover(album);
     if (!this.demo) {
       const kept = await this.store.cover(album.id);
       // A made cover is replaced once the folder offers a real one.

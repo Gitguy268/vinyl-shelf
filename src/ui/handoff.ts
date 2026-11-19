@@ -1,4 +1,7 @@
 import { Emitter } from '../util/emitter';
+import { originOf, shelfUrl } from './protocol';
+
+export { shelfUrl };
 
 /** The shelf's side of vinyl-shelf/1 (docs/PROTOCOL.md). */
 
@@ -40,13 +43,6 @@ export interface HandoffEvents extends Record<string, unknown> {
 
 const HELLO_TIMEOUT_MS = 25_000;
 
-/** `?shelf` added to a player address, keeping its own query and hash. */
-export function shelfUrl(url: string): string {
-  const u = new URL(url, location.href);
-  u.searchParams.set('shelf', '');
-  return u.href;
-}
-
 /**
  * One album handed to one player page (a frame of ours, or a tab we opened). Messages from any
  * other window are ignored; the player is sent the album only after it says hello.
@@ -54,6 +50,8 @@ export function shelfUrl(url: string): string {
 export class Handoff {
   readonly events = new Emitter<HandoffEvents>();
   private target: Window | null = null;
+  /** The player's origin; files are only ever posted to it ('*' only for a file: player). */
+  private origin = '*';
   private payload: { album: HandoffAlbum; tracks: HandoffTrack[] } | null = null;
   private timer = 0;
   private sent = false;
@@ -63,8 +61,9 @@ export class Handoff {
   }
 
   /** Points the hand-off at a window before the player loads in it, so an early hello is kept. */
-  begin(target: Window, album: HandoffAlbum, tracks: HandoffTrack[]): void {
+  begin(target: Window, playerUrl: string, album: HandoffAlbum, tracks: HandoffTrack[]): void {
     this.target = target;
+    this.origin = originOf(playerUrl, location.href);
     this.payload = { album, tracks };
     this.sent = false;
     clearTimeout(this.timer);
@@ -88,6 +87,7 @@ export class Handoff {
     const d = e.data as { type?: unknown; v?: unknown } | null;
     if (!this.target || e.source !== this.target || !d || typeof d !== 'object' || d.v !== 1)
       return;
+    if (this.origin !== '*' && e.origin !== this.origin) return;
     switch (d.type) {
       case 'vinyl-shelf:hello': {
         if (!this.payload || this.sent) return;
@@ -95,7 +95,7 @@ export class Handoff {
         clearTimeout(this.timer);
         const msg = { type: 'vinyl-shelf:load', v: 1, autoplay: true, ...this.payload };
         try {
-          this.target.postMessage(msg, '*');
+          this.target.postMessage(msg, this.origin);
         } catch {
           // The window went away between hello and load.
         }
