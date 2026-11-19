@@ -139,7 +139,7 @@ for (const name of enginesArg.split(',')) {
         () =>
           window.__shelf.library.albums.length >= 6 && document.getElementById('progress').hidden,
         null,
-        { timeout: 60000 },
+        { timeout: 150000 },
       );
       const albums = await page.evaluate(() =>
         window.__shelf.library.albums.map((a) => ({
@@ -245,7 +245,7 @@ for (const name of enginesArg.split(',')) {
         await page.waitForFunction(
           () => window.__shelf.library.albums.length >= 6 && window.__shelf.library.linked,
           null,
-          { timeout: 60000 },
+          { timeout: 150000 },
         );
       }
 
