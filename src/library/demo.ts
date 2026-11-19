@@ -200,5 +200,5 @@ export function demoFile(track: TrackInfo): File {
     v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 28000, true);
   }
   const name = track.path.slice(track.path.lastIndexOf('/') + 1);
-  return new File([buf], name, { type: 'audio/wav', lastModified: track.mtime });
+  return new File([new Uint8Array(buf)], name, { type: 'audio/wav', lastModified: track.mtime });
 }
