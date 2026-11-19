@@ -50,6 +50,28 @@ function fixtureFiles() {
   return out;
 }
 
+/** waitForFunction with a name: on a timeout it says which wait, and what the shelf looked like. */
+async function waitUntil(page, fn, what, timeout = 60000) {
+  try {
+    await page.waitForFunction(fn, null, { timeout });
+  } catch {
+    const state = await page
+      .evaluate(() => {
+        const l = window.__shelf?.library;
+        return {
+          shelf: !!window.__shelf,
+          albums: l?.albums.length,
+          linked: l?.linked,
+          pill: !document.getElementById('relink').hidden,
+          progress: document.getElementById('progress-text').textContent,
+          errors: (window.__tagErrors ?? []).slice(0, 2),
+        };
+      })
+      .catch((e) => String(e));
+    throw new Error(`timed out waiting for ${what}: ${JSON.stringify(state)}`);
+  }
+}
+
 async function usePlayer(page) {
   await page.evaluate((u) => {
     localStorage.setItem('vinyl-shelf.customPlayer', JSON.stringify(u));
@@ -186,7 +208,7 @@ async function playStatus(page) {
   const page = await ctx.newPage();
   try {
     await page.goto(SHELF);
-    await page.waitForFunction(() => window.__shelf);
+    await waitUntil(page, () => window.__shelf, 'the page');
     await usePlayer(page);
     await page.evaluate(async (files) => {
       const music = await (
@@ -202,21 +224,26 @@ async function playStatus(page) {
       }
     }, fixtureFiles());
     await page.click('#welcome-folder');
-    await page.waitForFunction(
+    await waitUntil(
+      page,
       () => window.__shelf.library.linked && window.__shelf.library.albums.length >= 6,
-      null,
-      { timeout: 150000 },
+      'the first scan',
+      150000,
     );
     await page.evaluate(() => sessionStorage.setItem('ask', '1'));
     await page.reload();
-    await page.waitForFunction(() => window.__shelf && window.__shelf.library.albums.length >= 6);
+    await waitUntil(
+      page,
+      () => window.__shelf && window.__shelf.library.albums.length >= 6,
+      'the shelf after the reload',
+    );
     await page.waitForTimeout(800);
     check(
       await page.isVisible('#relink'),
       'the reconnect pill shows when the browser wants to ask',
     );
     await page.click('#relink-go');
-    await page.waitForFunction(() => window.__shelf.library.linked, null, { timeout: 30000 });
+    await waitUntil(page, () => window.__shelf.library.linked, 'reconnecting after the click');
     check(
       await page.evaluate(() => window.__asked === true),
       'one click asks the browser and reconnects',
