@@ -19,7 +19,7 @@ export default defineConfig(
   },
   {
     // Playwright scripts run in Node but pass callbacks that execute in the page.
-    files: ['tests/**/*.mjs'],
+    files: ['tests/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   prettier,

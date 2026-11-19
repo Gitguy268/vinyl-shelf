@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gitguy268.github.io/vinyl-shelf/sitemap.xml

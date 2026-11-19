@@ -1,0 +1,14 @@
+# Vinyl Shelf
+
+> A 3D record shelf over your music folder. Pull out an album and it plays on a vinyl player.
+
+Vinyl Shelf is a web page (one self-contained index.html) that reads a music folder in the browser,
+groups the files into albums by their tags, and shows them as LP records on an oak cube shelf.
+Pulling a record out shows its cover and, turned over, its tracklist by side. Playing it hands
+the album to one of six browser vinyl players over a small postMessage protocol, vinyl-shelf/1.
+Nothing is uploaded; only tags and small covers are kept in the browser's IndexedDB.
+
+- Live: https://gitguy268.github.io/vinyl-shelf/
+- Source: https://github.com/Gitguy268/vinyl-shelf
+- Protocol: https://github.com/Gitguy268/vinyl-shelf/blob/main/docs/PROTOCOL.md
+- Licence: MIT

@@ -80,8 +80,7 @@ const engines = { chromium, firefox, webkit };
 const launch = {
   chromium: {
     args: [
-      '--use-angle=metal',
-      '--ignore-gpu-blocklist',
+      ...(process.platform === 'darwin' ? ['--use-angle=metal', '--ignore-gpu-blocklist'] : []),
       '--autoplay-policy=no-user-gesture-required',
     ],
   },

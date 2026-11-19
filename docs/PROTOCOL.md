@@ -64,14 +64,14 @@ Some browsers (Safari, and WebKit generally) keep sound off in a framed page fro
 
 ## Players that speak it
 
-| Player | Page |
-|---|---|
-| Realistic Vinyl Player | https://gitguy268.github.io/realistic-vinyl-player/ |
+| Player                       | Page                                                      |
+| ---------------------------- | --------------------------------------------------------- |
+| Realistic Vinyl Player       | https://gitguy268.github.io/realistic-vinyl-player/       |
 | Ultra-Realistic Vinyl Player | https://gitguy268.github.io/ultra-realistic-vinyl-player/ |
-| 8-bit Vinyl Player | https://gitguy268.github.io/8-bit-vinyl-player/ |
-| Vinyl Player | https://gitguy268.github.io/Vinyl-Player/ |
-| 8-bit Player, turntable | https://gitguy268.github.io/8bit-player/vinyl-8bit.html |
-| 8-bit Player, chiptune stage | https://gitguy268.github.io/8bit-player/ |
+| 8-bit Vinyl Player           | https://gitguy268.github.io/8-bit-vinyl-player/           |
+| Vinyl Player                 | https://gitguy268.github.io/Vinyl-Player/                 |
+| 8-bit Player, turntable      | https://gitguy268.github.io/8bit-player/vinyl-8bit.html   |
+| 8-bit Player, chiptune stage | https://gitguy268.github.io/8bit-player/                  |
 
 ## Testing a receiver
 
