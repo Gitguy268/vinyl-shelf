@@ -216,3 +216,11 @@ export function generatedCover(album: CoverText, size = 512): HTMLCanvasElement 
   g.fillRect(0, 0, s, s);
   return cv;
 }
+
+/** The colours a made cover would have: a spine can be painted before any cover is read. */
+export function placeholderColours(album: CoverText): { colour: string; ink: string } {
+  const seed = seedOf(album.id + album.title);
+  const [bg, a] = PALETTES[seed % PALETTES.length]!;
+  const colour = (seed >>> 4) % 2 ? bg : a;
+  return { colour, ink: inkOn(colour) };
+}

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Vinyl Shelf</title>
+    <meta
+      name="description"
+      content="A 3D record shelf over your music folder. Pull out an album and it plays on a vinyl player. Runs in your browser; your music never leaves your computer."
+    />
+    <meta name="theme-color" content="#1b1612" />
+    <meta property="og:title" content="Vinyl Shelf" />
+    <meta
+      property="og:description"
+      content="A 3D record shelf over your music folder. Pull out an album and it plays on a vinyl player."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gitguy268.github.io/vinyl-shelf/" />
+    <meta property="og:image" content="https://gitguy268.github.io/vinyl-shelf/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  </head>
+  <body data-light="dusk">
+    <canvas
+      id="scene"
+      tabindex="0"
+      role="application"
+      aria-label="Record shelf. Arrow keys move along the records, Enter pulls one out."
+      aria-describedby="keys-hint"
+    ></canvas>
+    <p id="keys-hint" class="sr-only">
+      Arrow keys move along the shelf. Enter pulls the record out. Slash searches. R picks a record
+      at random. L shows the list.
+    </p>
+
+    <header class="bar" id="bar">
+      <a class="brand" href="./" aria-label="Vinyl Shelf, start again">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="14" class="disc" />
+          <circle cx="16" cy="16" r="9.5" class="groove" />
+          <circle cx="16" cy="16" r="5" class="label" />
+          <circle cx="16" cy="16" r="1.2" class="hole" />
+        </svg>
+        <span>Vinyl Shelf</span>
+      </a>
+      <label class="search" id="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="M15.5 15.5 21 21" />
+        </svg>
+        <input
+          id="search"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Search the shelf"
+          aria-label="Search the shelf"
+        />
+        <span id="search-count" class="count" aria-live="polite"></span>
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <div class="tools">
+        <label class="select">
+          <span class="sr-only">Sort by</span>
+          <select id="sort">
+            <option value="artist">Artist</option>
+            <option value="title">Title</option>
+            <option value="year">Year</option>
+            <option value="genre">Genre</option>
+            <option value="added">Recently added</option>
+          </select>
+        </label>
+        <button
+          id="shuffle"
+          class="icon"
+          type="button"
+          title="Pick a record for me (R)"
+          aria-label="Pick a record for me"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+            <circle cx="8.5" cy="8.5" r="1.3" class="fill" />
+            <circle cx="15.5" cy="15.5" r="1.3" class="fill" />
+            <circle cx="15.5" cy="8.5" r="1.3" class="fill" />
+            <circle cx="8.5" cy="15.5" r="1.3" class="fill" />
+            <circle cx="12" cy="12" r="1.3" class="fill" />
+          </svg>
+        </button>
+        <button
+          id="view"
+          class="icon"
+          type="button"
+          aria-pressed="false"
+          title="List view (L)"
+          aria-label="List view"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+          </svg>
+        </button>
+        <button
+          id="light"
+          class="icon"
+          type="button"
+          title="Daylight or dusk (D)"
+          aria-label="Switch to daylight"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="sun">
+            <circle cx="12" cy="12" r="4.2" />
+            <path
+              d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"
+            />
+          </svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="moon">
+            <path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10Z" />
+          </svg>
+        </button>
+        <button
+          id="settings-open"
+          class="icon"
+          type="button"
+          title="Players and settings"
+          aria-label="Players and settings"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+            <circle cx="16" cy="7" r="2.2" />
+            <circle cx="10" cy="17" r="2.2" />
+          </svg>
+        </button>
+        <button id="folder" class="primary" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"
+            />
+          </svg>
+          <span id="folder-label">Open folder</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="tip" class="tip" role="tooltip" hidden></div>
+
+    <section id="welcome" class="welcome" hidden aria-labelledby="welcome-title">
+      <div class="welcome-card">
+        <p class="eyebrow">Your music, as records</p>
+        <h1 id="welcome-title">Put your music folder on a shelf.</h1>
+        <p class="lede">
+          Every album becomes a record with its own sleeve. Pull one out, turn it over, and play it
+          on one of six vinyl players.
+        </p>
+        <div class="welcome-actions">
+          <button id="welcome-folder" class="primary big" type="button">
+            Open your music folder
+          </button>
+          <button id="welcome-demo" class="ghost big" type="button">Try the demo shelf</button>
+        </div>
+        <p class="fine">
+          Everything happens in this browser tab. Your music is read from your computer and never
+          uploaded.
+        </p>
+      </div>
+    </section>
+
+    <aside id="album" class="panel album" hidden aria-labelledby="album-title">
+      <button
+        id="album-close"
+        class="icon close"
+        type="button"
+        aria-label="Put the record back (Esc)"
+        title="Put back (Esc)"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+      <img id="album-cover" class="album-cover" alt="" hidden />
+      <p id="album-artist" class="eyebrow"></p>
+      <h2 id="album-title"></h2>
+      <p id="album-meta" class="meta"></p>
+      <div class="play-row">
+        <button id="play" class="primary big" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5.5v13l10.5-6.5Z" class="fill" />
+          </svg>
+          <span>Play on <b id="play-name">Realistic</b></span>
+        </button>
+        <button
+          id="player-pick"
+          class="icon big"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-label="Choose the player"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+        </button>
+        <ul id="player-menu" class="menu" role="listbox" aria-label="Players" hidden></ul>
+      </div>
+      <div class="row">
+        <button id="flip" class="ghost" type="button" title="Turn the sleeve over (F)">
+          Turn over
+        </button>
+        <button id="putback" class="ghost" type="button" title="Put it back (Esc)">Put back</button>
+      </div>
+      <div id="album-tracks" class="tracks"></div>
+    </aside>
+
+    <aside id="deck" class="deck" hidden aria-label="Player">
+      <header class="deck-head">
+        <span id="deck-badge" class="badge" aria-hidden="true"></span>
+        <div class="deck-what">
+          <strong id="deck-name"></strong>
+          <span id="deck-status" aria-live="polite"></span>
+        </div>
+        <button
+          id="deck-hide"
+          class="icon"
+          type="button"
+          title="Hide the player, keep playing"
+          aria-label="Hide the player"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+        </button>
+        <button
+          id="deck-tab"
+          class="icon"
+          type="button"
+          title="Open in a new tab"
+          aria-label="Open the player in a new tab"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M14 4.5h5.5V10M19.5 4.5 11 13M10 6.5H6a1.5 1.5 0 0 0-1.5 1.5v10A1.5 1.5 0 0 0 6 19.5h10a1.5 1.5 0 0 0 1.5-1.5v-4"
+            />
+          </svg>
+        </button>
+        <button
+          id="deck-full"
+          class="icon"
+          type="button"
+          title="Full screen"
+          aria-label="Full screen"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" />
+          </svg>
+        </button>
+        <button
+          id="deck-close"
+          class="icon"
+          type="button"
+          title="Stop and close"
+          aria-label="Stop and close the player"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+      <p id="deck-hint" class="deck-hint" hidden>
+        Click the player once to start the sound. This browser keeps it quiet until then.
+      </p>
+      <div id="deck-frame" class="deck-frame"></div>
+    </aside>
+
+    <button id="now" class="now" type="button" hidden>
+      <span class="spin" aria-hidden="true"></span>
+      <span id="now-text"></span>
+    </button>
+
+    <main id="list" class="list" hidden aria-label="Albums"></main>
+
+    <div id="progress" class="pill" hidden role="status">
+      <span id="progress-text"></span>
+      <span class="bar-track"><span id="progress-bar"></span></span>
+      <button id="progress-cancel" class="link" type="button">Stop</button>
+    </div>
+
+    <div id="relink" class="pill relink" hidden role="status">
+      <span id="relink-text">Your shelf is here. Connect the music folder again to play.</span>
+      <button id="relink-go" class="primary" type="button">Connect folder</button>
+    </div>
+
+    <div id="drop" class="drop" hidden><p>Drop your music folder</p></div>
+
+    <dialog id="settings" class="dialog" aria-labelledby="settings-title">
+      <form method="dialog">
+        <header>
+          <h2 id="settings-title">Players and settings</h2>
+          <button class="icon close" value="close" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+        <fieldset>
+          <legend>Play records on</legend>
+          <div id="settings-players" class="player-grid"></div>
+          <label class="field">
+            <span>Or your own player's address</span>
+            <input id="custom-url" type="url" placeholder="http://localhost:8080/" />
+            <small
+              >Any page that speaks the vinyl-shelf/1 hand-off, such as a copy of one of the players
+              on this computer.</small
+            >
+          </label>
+          <label class="check"
+            ><input id="open-tab" type="checkbox" /> Open the player in a new tab instead of beside
+            the shelf</label
+          >
+        </fieldset>
+        <fieldset>
+          <legend>Shelf</legend>
+          <label class="check"
+            ><input id="dividers" type="checkbox" checked /> Divider cards between letters, decades
+            and genres</label
+          >
+          <label class="check"
+            ><input id="quality" type="checkbox" /> Lighter graphics (for older computers)</label
+          >
+          <p id="folder-info" class="fine"></p>
+          <div class="row">
+            <button id="rescan" class="ghost" type="button">Read the folder again</button>
+            <button id="forget" class="ghost danger" type="button">Forget this folder</button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Keys</legend>
+          <dl class="keys">
+            <dt><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt>
+            <dd>Move along the records</dd>
+            <dt><kbd>Enter</kbd></dt>
+            <dd>Pull out, then play</dd>
+            <dt><kbd>F</kbd></dt>
+            <dd>Turn the sleeve over</dd>
+            <dt><kbd>Esc</kbd></dt>
+            <dd>Put it back</dd>
+            <dt><kbd>/</kbd></dt>
+            <dd>Search</dd>
+            <dt><kbd>R</kbd></dt>
+            <dd>A record at random</dd>
+            <dt><kbd>L</kbd></dt>
+            <dd>List view</dd>
+            <dt><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></dt>
+            <dd>Closer, further, whole shelf</dd>
+          </dl>
+        </fieldset>
+        <p class="fine about">
+          Vinyl Shelf is open source (MIT):
+          <a href="https://github.com/Gitguy268/vinyl-shelf" target="_blank" rel="noopener"
+            >github.com/Gitguy268/vinyl-shelf</a
+          >.
+        </p>
+      </form>
+    </dialog>
+
+    <div id="live" class="sr-only" aria-live="polite"></div>
+    <input id="folder-input" type="file" webkitdirectory multiple hidden />
+    <noscript><p class="noscript">Vinyl Shelf needs JavaScript.</p></noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
