@@ -261,7 +261,8 @@ kbd {
 }
 
 .search {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1020,8 +1021,21 @@ legend {
   .brand span,
   #folder-label,
   .search kbd,
-  .select {
+  .select,
+  #shuffle,
+  #light {
     display: none;
+  }
+
+  .tools .icon {
+    width: 34px;
+  }
+
+  #folder {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+    margin-left: 2px;
   }
 
   .search {

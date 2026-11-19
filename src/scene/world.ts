@@ -19,6 +19,9 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 export type Quality = 'high' | 'low';
 
+/** Vertical field of view of what is on screen, in degrees. */
+const BASE_FOV = 34;
+
 /**
  * The renderer, camera and post-processing. Frames are drawn only when something changed or
  * moves (`wake`), so an idle shelf costs nothing.
@@ -26,7 +29,7 @@ export type Quality = 'high' | 'low';
 export class World {
   readonly renderer: WebGLRenderer;
   readonly scene = new Scene();
-  readonly camera = new PerspectiveCamera(34, 1, 0.05, 40);
+  readonly camera = new PerspectiveCamera(BASE_FOV, 1, 0.05, 40);
   readonly canvas: HTMLCanvasElement;
   private composer: EffectComposer;
   private ao: GTAOPass | null = null;
@@ -38,7 +41,9 @@ export class World {
   private tickers = new Set<(dt: number, t: number) => boolean>();
   quality: Quality;
   /** Fraction of the canvas width covered on the right by the deck panel: the view shifts left. */
-  private inset = 0;
+  /** Fractions of the canvas covered by panels, on the right (desktop) and at the bottom (phones). */
+  insetRight = 0;
+  insetBottom = 0;
   frames = 0;
 
   constructor(canvas: HTMLCanvasElement, quality: Quality) {
@@ -112,8 +117,9 @@ export class World {
     }
   }
 
-  setInset(fraction: number): void {
-    this.inset = fraction;
+  setInset(right: number, bottom = 0): void {
+    this.insetRight = right;
+    this.insetBottom = bottom;
     this.resize();
   }
 
@@ -143,11 +149,15 @@ export class World {
     this.renderer.setSize(w, h, false);
     this.composer.setSize(w, h);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
-    // The deck panel covers the right: centre the view in what is left, by rendering the right
-    // part of a wider view whose centre falls in the middle of the uncovered area.
-    const shift = this.inset * w;
-    this.camera.aspect = (w + shift) / h;
-    if (shift > 0) this.camera.setViewOffset(w + shift, h, shift, 0, w, h);
+    // A panel covers the right (or the bottom): centre the view in what is left, by rendering
+    // part of a larger view whose centre falls in the middle of the uncovered area.
+    const sx = this.insetRight * w;
+    const sy = this.insetBottom * h;
+    this.camera.aspect = (w + sx) / (h + sy);
+    // Keep the visible part at the same field of view: the larger frame gets a wider one.
+    this.camera.fov =
+      (2 * Math.atan(Math.tan((BASE_FOV * Math.PI) / 360) * ((h + sy) / h)) * 180) / Math.PI;
+    if (sx > 0 || sy > 0) this.camera.setViewOffset(w + sx, h + sy, sx, sy, w, h);
     else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
     this.wake();

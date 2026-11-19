@@ -1,84 +1,169 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shelf protocol stub</title>
-<style>
-  body { margin: 0; font: 14px system-ui, sans-serif; background: #1b1714; color: #eee; display: grid; grid-template-rows: auto 1fr; height: 100vh; }
-  header { display: flex; gap: 8px; padding: 8px; align-items: center; flex-wrap: wrap; }
-  main, iframe { min-height: 0; }
-  iframe { border: 0; width: 100%; height: 100%; background: #000; }
-  #log { font: 12px ui-monospace, monospace; opacity: .8; }
-</style>
-</head>
-<body>
-<header>
-  <input id="url" size="70" aria-label="Player URL">
-  <button id="play">Play album</button>
-  <button id="tab">Play in new tab</button>
-  <span id="log">idle</span>
-</header>
-<main id="deck"></main>
-<script>
-// A bare Vinyl Shelf: makes a three-track album and hands it to a player over vinyl-shelf/1.
-const q = new URLSearchParams(location.search);
-const urlIn = document.getElementById('url');
-urlIn.value = q.get('player') || '';
-const log = m => { document.getElementById('log').textContent = m; (window.shelfLog ||= []).push(m + ' @' + Math.round(performance.now())); };
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shelf protocol stub</title>
+    <style>
+      body {
+        margin: 0;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #1b1714;
+        color: #eee;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100vh;
+      }
+      header {
+        display: flex;
+        gap: 8px;
+        padding: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      main,
+      iframe {
+        min-height: 0;
+      }
+      iframe {
+        border: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+      }
+      #log {
+        font:
+          12px ui-monospace,
+          monospace;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <input id="url" size="70" aria-label="Player URL" />
+      <button id="play">Play album</button>
+      <button id="tab">Play in new tab</button>
+      <span id="log">idle</span>
+    </header>
+    <main id="deck"></main>
+    <script>
+      // A bare Vinyl Shelf: makes a three-track album and hands it to a player over vinyl-shelf/1.
+      const q = new URLSearchParams(location.search);
+      const urlIn = document.getElementById('url');
+      urlIn.value = q.get('player') || '';
+      const log = (m) => {
+        document.getElementById('log').textContent = m;
+        (window.shelfLog ||= []).push(m + ' @' + Math.round(performance.now()));
+      };
 
-function wav(seconds, hz) {
-  const sr = 22050, n = Math.floor(seconds * sr), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
-  const s = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-  s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * hz * i / sr) * 8000 * Math.min(1, (n - i) / sr), true);
-  return buf;
-}
-async function cover() {
-  const c = document.createElement('canvas'); c.width = c.height = 256;
-  const g = c.getContext('2d'); g.fillStyle = '#c8553d'; g.fillRect(0, 0, 256, 256);
-  g.fillStyle = '#f4e9d8'; g.beginPath(); g.arc(128, 128, 80, 0, 7); g.fill();
-  return new Promise(r => c.toBlob(r, 'image/png'));
-}
-async function album() {
-  const names = [['01 Opening Groove', 220], ['02 Middle Eight', 277], ['03 Run-out', 330]];
-  return {
-    album: { title: 'Protocol Pressing', artist: 'Stub Band', year: 2026, genre: 'Test', cover: await cover() },
-    tracks: names.map(([n, hz], i) => ({ file: new File([wav(8, hz)], n + '.wav', { type: 'audio/wav' }), title: n.slice(3), trackNo: i + 1, disc: 1 }))
-  };
-}
+      function wav(seconds, hz) {
+        const sr = 22050,
+          n = Math.floor(seconds * sr),
+          buf = new ArrayBuffer(44 + n * 2),
+          v = new DataView(buf);
+        const s = (o, t) => {
+          for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i));
+        };
+        s(0, 'RIFF');
+        v.setUint32(4, 36 + n * 2, true);
+        s(8, 'WAVEfmt ');
+        v.setUint32(16, 16, true);
+        v.setUint16(20, 1, true);
+        v.setUint16(22, 1, true);
+        v.setUint32(24, sr, true);
+        v.setUint32(28, sr * 2, true);
+        v.setUint16(32, 2, true);
+        v.setUint16(34, 16, true);
+        s(36, 'data');
+        v.setUint32(40, n * 2, true);
+        for (let i = 0; i < n; i++)
+          v.setInt16(
+            44 + i * 2,
+            Math.sin((2 * Math.PI * hz * i) / sr) * 8000 * Math.min(1, (n - i) / sr),
+            true,
+          );
+        return buf;
+      }
+      async function cover() {
+        const c = document.createElement('canvas');
+        c.width = c.height = 256;
+        const g = c.getContext('2d');
+        g.fillStyle = '#c8553d';
+        g.fillRect(0, 0, 256, 256);
+        g.fillStyle = '#f4e9d8';
+        g.beginPath();
+        g.arc(128, 128, 80, 0, 7);
+        g.fill();
+        return new Promise((r) => c.toBlob(r, 'image/png'));
+      }
+      async function album() {
+        const names = [
+          ['01 Opening Groove', 220],
+          ['02 Middle Eight', 277],
+          ['03 Run-out', 330],
+        ];
+        return {
+          album: {
+            title: 'Protocol Pressing',
+            artist: 'Stub Band',
+            year: 2026,
+            genre: 'Test',
+            cover: await cover(),
+          },
+          tracks: names.map(([n, hz], i) => ({
+            file: new File([wav(8, hz)], n + '.wav', { type: 'audio/wav' }),
+            title: n.slice(3),
+            trackNo: i + 1,
+            disc: 1,
+          })),
+        };
+      }
 
-let target = null, payload = null;
-window.shelfState = null;
-addEventListener('message', e => {
-  const d = e.data;
-  if (!target || e.source !== target || !d || d.v !== 1) return;
-  if (d.type === 'vinyl-shelf:hello') {
-    log('hello from ' + d.player);
-    const t = target;
-    payload.then(p => { t.postMessage(Object.assign({ type: 'vinyl-shelf:load', v: 1, autoplay: true }, p), '*'); log('sent load'); });
-  }
-  else if (d.type === 'vinyl-shelf:loaded') log('loaded ' + d.tracks);
-  else if (d.type === 'vinyl-shelf:state') { window.shelfState = d; log((d.playing ? 'playing ' : 'paused ') + d.title + ' ' + d.position + 's'); }
-});
-const withShelf = u => u + (u.includes('?') ? '&' : '?') + 'shelf' + (q.has('debug') ? '&debug' : '');
-document.getElementById('play').onclick = () => {
-  payload = album(); payload.then(() => log('album ready'));
-  const deck = document.getElementById('deck'); deck.textContent = '';
-  const f = document.createElement('iframe');
-  f.allow = 'autoplay; fullscreen'; f.title = 'Player';
-  deck.append(f);
-  target = f.contentWindow;           // set before load so an early hello is not dropped
-  f.src = withShelf(urlIn.value);
-  log('opening player');
-};
-document.getElementById('tab').onclick = () => {
-  payload = album();
-  target = window.open(withShelf(urlIn.value), '_blank');
-  log('opened tab');
-};
-</script>
-</body>
+      let target = null,
+        payload = null;
+      window.shelfState = null;
+      addEventListener('message', (e) => {
+        const d = e.data;
+        if (!target || e.source !== target || !d || d.v !== 1) return;
+        if (d.type === 'vinyl-shelf:hello') {
+          log('hello from ' + d.player);
+          const t = target;
+          payload.then((p) => {
+            t.postMessage(
+              Object.assign({ type: 'vinyl-shelf:load', v: 1, autoplay: true }, p),
+              '*',
+            );
+            log('sent load');
+          });
+        } else if (d.type === 'vinyl-shelf:loaded') log('loaded ' + d.tracks);
+        else if (d.type === 'vinyl-shelf:state') {
+          window.shelfState = d;
+          log((d.playing ? 'playing ' : 'paused ') + d.title + ' ' + d.position + 's');
+        }
+      });
+      const withShelf = (u) =>
+        u + (u.includes('?') ? '&' : '?') + 'shelf' + (q.has('debug') ? '&debug' : '');
+      document.getElementById('play').onclick = () => {
+        payload = album();
+        payload.then(() => log('album ready'));
+        const deck = document.getElementById('deck');
+        deck.textContent = '';
+        const f = document.createElement('iframe');
+        f.allow = 'autoplay; fullscreen';
+        f.title = 'Player';
+        deck.append(f);
+        target = f.contentWindow; // set before load so an early hello is not dropped
+        f.src = withShelf(urlIn.value);
+        log('opening player');
+      };
+      document.getElementById('tab').onclick = () => {
+        payload = album();
+        target = window.open(withShelf(urlIn.value), '_blank');
+        log('opened tab');
+      };
+    </script>
+  </body>
 </html>

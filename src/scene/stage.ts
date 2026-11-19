@@ -59,7 +59,6 @@ export class Stage {
   private playingId: string | null = null;
   private ray = new Raycaster();
   private events: StageEvents;
-  private uncovered = 1;
   private flushAt = 0;
 
   constructor(canvasEl: HTMLCanvasElement, quality: Quality, events: StageEvents) {
@@ -264,10 +263,9 @@ export class Stage {
     this.world.wake(900);
   }
 
-  /** Fraction of the page width the side panels cover (the view shifts into the rest). */
-  setInset(fraction: number): void {
-    this.uncovered = 1 - fraction;
-    this.world.setInset(fraction);
+  /** Fractions of the view the panels cover, right and bottom (the view shifts into the rest). */
+  setInset(right: number, bottom = 0): void {
+    this.world.setInset(right, bottom);
     if (this.hero) void this.move(this.hero.hero.sleeve, this.presentPose(this.hero.flipped), 420);
   }
 
@@ -292,12 +290,17 @@ export class Stage {
     const cam = this.world.camera;
     cam.updateMatrixWorld();
     const tan = Math.tan((cam.fov * Math.PI) / 360);
-    const canvasAspect =
-      this.world.canvas.clientWidth / Math.max(1, this.world.canvas.clientHeight);
-    const freeAspect = canvasAspect * this.uncovered;
+    // The camera's frustum is the larger, offset view (World.resize): the free part of it is a
+    // fraction of its height and width.
+    const w = this.world.canvas.clientWidth;
+    const h = Math.max(1, this.world.canvas.clientHeight);
+    const sx = this.world.insetRight * w;
+    const sy = this.world.insetBottom * h;
+    const freeH = (h - sy) / (h + sy);
+    const freeW = ((w - sx) / (w + sx)) * cam.aspect;
     const d = Math.max(
-      (DIM.sleeve * 1.65) / (2 * tan),
-      (DIM.sleeve * 1.4) / (2 * tan * Math.max(freeAspect, 0.2)),
+      (DIM.sleeve * 1.65) / (2 * tan * Math.max(freeH, 0.15)),
+      (DIM.sleeve * 1.35) / (2 * tan * Math.max(freeW, 0.15)),
     );
     const forward = cam.getWorldDirection(new Vector3());
     const position = cam.position.clone().addScaledVector(forward, d);

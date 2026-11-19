@@ -535,19 +535,20 @@ export class App {
     });
   }
 
-  /** The 3D view makes room for whichever panel is open on the right. */
+  /** The 3D view makes room for whichever panel is open: on the right, or at the bottom on a phone. */
   private layoutPanels(): void {
     if (!this.stage) return;
-    const w = window.innerWidth;
-    if (w <= 760 || this.listMode) {
-      this.stage.setInset(0);
-      return;
-    }
     const albumOpen = !byId('album').hidden;
     const deckOpen = this.deck.open && !byId('deck').hidden && !this.deck.tucked;
-    const panel = albumOpen ? byId('album') : deckOpen ? byId('deck') : null;
-    const covered = panel ? (panel.getBoundingClientRect().width + 24) / w : 0;
-    this.stage.setInset(Math.min(0.6, covered));
+    const panel = this.listMode ? null : albumOpen ? byId('album') : deckOpen ? byId('deck') : null;
+    if (!panel) {
+      this.stage.setInset(0, 0);
+      return;
+    }
+    const r = panel.getBoundingClientRect();
+    if (window.innerWidth <= 760)
+      this.stage.setInset(0, Math.min(0.7, (r.height + 16) / window.innerHeight));
+    else this.stage.setInset(Math.min(0.6, (r.width + 24) / window.innerWidth), 0);
   }
 
   // ─── Keys ───────────────────────────────────────────────────────
@@ -660,6 +661,7 @@ export class App {
       byId<HTMLInputElement>('custom-url').value = prefs.get('customPlayer', '');
       byId<HTMLInputElement>('open-tab').checked = prefs.get('openTab', false);
       byId<HTMLInputElement>('dividers').checked = this.dividers;
+      byId<HTMLInputElement>('daylight').checked = document.body.dataset.light === 'day';
       byId<HTMLInputElement>('quality').checked = prefs.get<string>('quality', '') === 'low';
       this.updateFolderInfo();
       dialog.showModal();
@@ -678,6 +680,9 @@ export class App {
     });
     byId<HTMLInputElement>('open-tab').addEventListener('change', (e) =>
       prefs.set('openTab', (e.target as HTMLInputElement).checked),
+    );
+    byId<HTMLInputElement>('daylight').addEventListener('change', (e) =>
+      this.setLight((e.target as HTMLInputElement).checked ? 'day' : 'dusk'),
     );
     byId<HTMLInputElement>('dividers').addEventListener('change', (e) => {
       this.dividers = (e.target as HTMLInputElement).checked;
