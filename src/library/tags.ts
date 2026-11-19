@@ -71,7 +71,9 @@ export async function readTags(file: File, path: string): Promise<TrackInfo> {
         meta.format.duration && Number.isFinite(meta.format.duration) ? meta.format.duration : null,
       compilation: c.compilation === true,
     };
-  } catch {
+  } catch (e) {
+    // With ?debug the page keeps the reasons, for the tests.
+    (globalThis as { __tagErrors?: string[] }).__tagErrors?.push(`${path}: ${String(e)}`);
     return { ...base, album: '' };
   }
 }

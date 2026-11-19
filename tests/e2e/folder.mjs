@@ -152,6 +152,8 @@ for (const name of enginesArg.split(',')) {
           coverPath: a.coverPath,
         })),
       );
+      const tagErrors = await page.evaluate(() => window.__tagErrors ?? []);
+      check(tagErrors.length === 0, 'every file parsed', tagErrors.slice(0, 2).join(' | '));
       check(
         albums.length === 6,
         'six albums, hidden and AppleDouble files skipped',

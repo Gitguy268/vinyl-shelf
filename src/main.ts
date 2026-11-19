@@ -7,6 +7,7 @@ import type { Quality } from './scene/world';
 /** Starts the page: the 3D shelf where WebGL 2 works, the list everywhere. */
 async function main(): Promise<void> {
   const params = new URLSearchParams(location.search);
+  if (params.has('debug')) Object.assign(window, { __tagErrors: [] as string[] });
   // Spines and labels are painted in Inter: wait for it, briefly.
   await Promise.race([
     document.fonts.load('700 16px "Inter Variable"'),
