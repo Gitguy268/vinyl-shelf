@@ -15,7 +15,7 @@ In shelf mode a player is a guest:
 
 ## Messages
 
-Every message is a plain object with `v: 1` and a `type`. Each side checks `event.source`: the player accepts messages only from `window.parent` (or `window.opener` when it is not framed), and the shelf only from the frame or window it opened. The origin is not checked, because a shelf can run from `gitguy268.github.io`, from another host, or from a `file://` page. The player only plays what it is sent and stores nothing, so an untrusted sender gains nothing it could not do with its own page.
+Every message is a plain object with `v: 1` and a `type`. Each side checks `event.source`: the player accepts messages only from `window.parent` (or `window.opener` when it is not framed), and the shelf only from the frame or window it opened. The player does not check the origin, because a shelf can run from `gitguy268.github.io`, from another host, or from a `file://` page; it only plays what it is sent and stores nothing, so an untrusted sender gains nothing it could not do with its own page. The shelf is stricter, because it sends the listener's files: it posts the album only to the origin its own frame or tab says hello from (normally the player's address; `'*'` only for a `file:` player, whose origin is opaque), and from then on ignores messages from any other origin.
 
 ### Player → shelf: `vinyl-shelf:hello`
 

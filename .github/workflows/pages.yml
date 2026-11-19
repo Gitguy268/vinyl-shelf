@@ -23,7 +23,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: cp LICENSE NOTICE dist/
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

@@ -173,12 +173,13 @@ export class Library {
     for (const img of contents.images) this.files.set(img.path, img.file);
     this.images = contents.images.map((img) => ({ path: img.path, size: img.file.size }));
     this.folderName = contents.name;
+    // Keep the index before saying the scan is done: a reload right after must find it.
+    await this.store.saveIndex([...this.tracks.values()], this.images);
+    await this.store.set('folderName', this.folderName);
     this.busy = null;
     this.events.emit('progress', null);
     this.regroup();
     this.events.emit('linked', this.linked);
-    await this.store.saveIndex([...this.tracks.values()], this.images);
-    await this.store.set('folderName', this.folderName);
     await this.pruneCovers();
     const n = this.albums.length;
     this.events.emit('status', `${n} ${n === 1 ? 'album' : 'albums'} on the shelf.`);

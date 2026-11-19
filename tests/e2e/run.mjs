@@ -1,4 +1,4 @@
-// npm run e2e: makes the music fixtures (needs ffmpeg) and runs the folder test against dist/.
+// npm run e2e: makes the music fixtures (needs ffmpeg) and runs the folder and picker tests against dist/.
 // Locally, when tests/protocol/site.sh has built the player copies, playback is tested too.
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -20,3 +20,4 @@ execFileSync(
     stdio: 'inherit',
   },
 );
+execFileSync(process.execPath, [path.join(root, 'tests/e2e/pickers.mjs')], { stdio: 'inherit' });

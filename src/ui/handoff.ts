@@ -50,7 +50,10 @@ const HELLO_TIMEOUT_MS = 25_000;
 export class Handoff {
   readonly events = new Emitter<HandoffEvents>();
   private target: Window | null = null;
-  /** The player's origin; files are only ever posted to it ('*' only for a file: player). */
+  /**
+   * The player's origin; files are only ever posted to it ('*' only for a file: player, whose
+   * origin is opaque). Set from the address, then from where the hello really came from.
+   */
   private origin = '*';
   private payload: { album: HandoffAlbum; tracks: HandoffTrack[] } | null = null;
   private timer = 0;
@@ -87,7 +90,11 @@ export class Handoff {
     const d = e.data as { type?: unknown; v?: unknown } | null;
     if (!this.target || e.source !== this.target || !d || typeof d !== 'object' || d.v !== 1)
       return;
-    if (this.origin !== '*' && e.origin !== this.origin) return;
+    // The hello fixes the origin for the rest: it comes from our own frame or tab, which may have
+    // been redirected (http to https, a trailing slash). Every later message must match it.
+    if (d.type === 'vinyl-shelf:hello' && !this.sent)
+      this.origin = e.origin === 'null' ? '*' : e.origin;
+    else if (this.origin !== '*' && e.origin !== this.origin) return;
     switch (d.type) {
       case 'vinyl-shelf:hello': {
         if (!this.payload || this.sent) return;

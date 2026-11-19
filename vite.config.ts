@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { copyFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 
@@ -21,9 +22,20 @@ function scrubThree(): Plugin {
   };
 }
 
+/** LICENSE and NOTICE go next to index.html in every build: the page bundles code whose licences ask for that. */
+function licences(): Plugin {
+  return {
+    name: 'licences',
+    apply: 'build',
+    closeBundle() {
+      for (const f of ['LICENSE', 'NOTICE']) copyFileSync(f, `dist/${f}`);
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
-  plugins: [scrubThree(), viteSingleFile({ removeViteModuleLoader: true })],
+  plugins: [scrubThree(), viteSingleFile({ removeViteModuleLoader: true }), licences()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 100_000_000,
