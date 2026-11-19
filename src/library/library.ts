@@ -5,7 +5,7 @@ import { groupAlbums } from './group';
 import { relink } from './relink';
 import { readDirectoryHandle, type FolderContents } from './scan';
 import { Store, type CoverRecord } from './store';
-import { pool, readPicture, readTags } from './tags';
+import { didTimeOut, pool, readPicture, readTags } from './tags';
 import type { Album, ImageInfo, TrackInfo } from './types';
 
 export interface LibraryEvents extends Record<string, unknown> {
@@ -148,9 +148,9 @@ export class Library {
       (done, track) => {
         known.set(track.path, track);
         this.events.emit('progress', { done, total, phase: 'reading' });
-        // The shelf fills in as tags arrive, a few times a second.
+        // The shelf fills in as tags arrive, every second and a half (a rebuild costs a frame).
         const now = performance.now();
-        if (now - lastEmit > 400 && done < total) {
+        if (now - lastEmit > 1500 && done < total) {
           lastEmit = now;
           this.tracks = new Map(known);
           this.regroup();
@@ -158,6 +158,13 @@ export class Library {
       },
       busy.signal,
     );
+    if (busy.signal.aborted) return;
+    // Files the parser ran out of time on (a slow machine, a busy page): once more, one at a time.
+    for (const p of r.fresh) {
+      const track = known.get(p.path);
+      if (!track || !didTimeOut(track) || busy.signal.aborted) continue;
+      known.set(p.path, await readTags(p.file, p.path, 60_000));
+    }
     if (busy.signal.aborted) return;
     for (const p of r.fresh) files.set(p.path, p.file);
     this.tracks = known;

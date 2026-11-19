@@ -6,7 +6,14 @@ type MM = typeof import('music-metadata');
 let mm: Promise<MM> | null = null;
 const load = (): Promise<MM> => (mm ??= import('music-metadata'));
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 20_000;
+
+/** Tracks whose tags were not read because the parser ran out of time (worth one more try). */
+const timedOut = new WeakSet<TrackInfo>();
+
+export function didTimeOut(track: TrackInfo): boolean {
+  return timedOut.has(track);
+}
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -30,7 +37,11 @@ const clean = (s: unknown): string => (typeof s === 'string' ? s.replace(/\0/g, 
  * The tags of one file; whatever is missing comes from its path. A file that will not parse still
  * gets a track. Cover art is skipped here (memory): readPicture reads it for one track per album.
  */
-export async function readTags(file: File, path: string): Promise<TrackInfo> {
+export async function readTags(
+  file: File,
+  path: string,
+  timeoutMs = TIMEOUT_MS,
+): Promise<TrackInfo> {
   const guess = guessFromPath(path);
   const base: TrackInfo = {
     path,
@@ -52,7 +63,7 @@ export async function readTags(file: File, path: string): Promise<TrackInfo> {
     const { parseBlob } = await load();
     const meta = await withTimeout(
       parseBlob(file, { skipCovers: true, skipPostHeaders: true }),
-      TIMEOUT_MS,
+      timeoutMs,
     );
     const c = meta.common;
     const year = c.year ?? (c.date ? Number.parseInt(c.date, 10) : NaN);
@@ -74,7 +85,9 @@ export async function readTags(file: File, path: string): Promise<TrackInfo> {
   } catch (e) {
     // With ?debug the page keeps the reasons, for the tests.
     (globalThis as { __tagErrors?: string[] }).__tagErrors?.push(`${path}: ${String(e)}`);
-    return { ...base, album: '' };
+    const track = { ...base, album: '' };
+    if (e instanceof Error && e.message === 'timeout') timedOut.add(track);
+    return track;
   }
 }
 
