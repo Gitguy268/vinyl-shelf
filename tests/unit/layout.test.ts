@@ -48,10 +48,15 @@ describe('layoutShelf', () => {
     });
   }
 
-  it('grows the shelf with the library', () => {
-    expect(shelfSize(30)).toEqual({ rows: 2, cols: 2 });
-    expect(shelfSize(400).rows).toBe(4);
-    expect(shelfSize(2000).cols).toBeGreaterThan(8);
+  it('grows the shelf with the library and keeps a spare cube on a small one', () => {
+    expect(shelfSize(1)).toEqual({ rows: 2, cols: 2 });
+    expect(shelfSize(5)).toEqual({ rows: 2, cols: 3 });
+    expect(shelfSize(30)).toEqual({ rows: 4, cols: 8 });
+    const small = layoutShelf(sortAlbums(many(30), 'artist'), 'artist');
+    expect(small.spare.length).toBeGreaterThan(0);
+    const big = layoutShelf(sortAlbums(many(2000), 'artist'), 'artist');
+    expect(big.rows).toBe(4);
+    expect(big.cols).toBeGreaterThanOrEqual(6);
   });
 
   it('puts a divider card before each new letter', () => {

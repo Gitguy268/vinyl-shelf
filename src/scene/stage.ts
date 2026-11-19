@@ -16,6 +16,7 @@ import { canvas, ctx2d, SANS } from '../art/draw';
 import type { SpineText } from '../art/spine';
 import type { Album, SortKey } from '../library/types';
 import { Hero, type HeroArt } from './hero';
+import { decorate } from './decor';
 import { DIM, layoutShelf, type ShelfLayout } from './layout';
 import { Rig } from './rig';
 import { Room, shelfFrame, type Light } from './room';
@@ -43,6 +44,7 @@ export class Stage {
   private tweens = new Tweens();
   private shelf = new Group();
   private frame: Group | null = null;
+  private decor: Group | null = null;
   private sleeves: Sleeves | null = null;
   private dividers = new Group();
   private turntable = new Turntable();
@@ -92,6 +94,9 @@ export class Stage {
     if (this.frame) this.shelf.remove(this.frame);
     this.frame = shelfFrame(this.layout);
     this.shelf.add(this.frame);
+    if (this.decor) this.shelf.remove(this.decor);
+    this.decor = decorate(this.layout);
+    this.shelf.add(this.decor);
     this.sleeves = new Sleeves(this.layout);
     for (const b of this.sleeves.batches) this.shelf.add(b.mesh);
     albums.forEach((a, i) => this.sleeves!.paint(i, spines(a)));
@@ -138,28 +143,25 @@ export class Stage {
     const kraft = new MeshStandardMaterial({ color: '#c8b28a', roughness: 0.9 });
     for (const slot of layout.slots) {
       if (slot.album >= 0) continue;
-      const card = new Mesh(
-        new BoxGeometry(slot.thickness, DIM.sleeve + 0.012, DIM.sleeve + 0.01),
-        kraft,
-      );
-      card.position.set(slot.x, slot.y + 0.006, slot.z);
+      const card = new Mesh(new BoxGeometry(slot.thickness, DIM.sleeve, DIM.sleeve + 0.01), kraft);
+      card.position.set(slot.x, slot.y, slot.z);
       card.rotation.set(0, 0, slot.lean);
       card.castShadow = true;
-      // The tab: a little label above the records, facing the room.
-      const c = canvas(96, 64);
+      // The tab: a little label standing just above the records at the front, facing the room.
+      const c = canvas(128, 40);
       const g = ctx2d(c);
       g.fillStyle = '#f3ead8';
-      g.fillRect(0, 0, 96, 64);
+      g.fillRect(0, 0, 128, 40);
       g.fillStyle = '#2a2018';
-      g.font = `800 ${slot.label.length > 3 ? 22 : 40}px ${SANS}`;
+      g.font = `800 ${slot.label.length > 3 ? 20 : 30}px ${SANS}`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText(slot.label.slice(0, 10), 48, 34, 90);
+      g.fillText(slot.label.slice(0, 12), 64, 22, 122);
       const t = new CanvasTexture(c);
       t.colorSpace = SRGBColorSpace;
       const face = new MeshStandardMaterial({ map: t, roughness: 0.7 });
       const edge = new MeshStandardMaterial({ color: '#efe4cf', roughness: 0.7 });
-      const tab = new Mesh(new BoxGeometry(0.048, 0.032, 0.0016), [
+      const tab = new Mesh(new BoxGeometry(0.05, 0.0156, 0.0016), [
         edge,
         edge,
         edge,
@@ -167,7 +169,7 @@ export class Stage {
         face,
         edge,
       ]);
-      tab.position.set(0, (DIM.sleeve + 0.012) / 2 + 0.012, (DIM.sleeve + 0.01) / 2 - 0.03);
+      tab.position.set(0, DIM.sleeve / 2 + 0.0088, DIM.sleeve / 2 - 0.018);
       card.add(tab);
       this.dividers.add(card);
     }
@@ -266,11 +268,16 @@ export class Stage {
   setInset(fraction: number): void {
     this.uncovered = 1 - fraction;
     this.world.setInset(fraction);
-    if (this.hero)
-      void this.tweens.to(this.hero.hero.sleeve, this.presentPose(this.hero.flipped), 420);
+    if (this.hero) void this.move(this.hero.hero.sleeve, this.presentPose(this.hero.flipped), 420);
   }
 
   // ─── The record in your hands ───────────────────────────────────
+
+  /** A tween that also wakes the renderer (it sleeps when nothing moves). */
+  private move(...args: Parameters<Tweens['to']>): Promise<void> {
+    this.world.wake();
+    return this.tweens.to(...args);
+  }
 
   private shelfPose(album: number, out = 0): Pose {
     const local = this.sleeves!.pose(album, out);
@@ -289,13 +296,15 @@ export class Stage {
       this.world.canvas.clientWidth / Math.max(1, this.world.canvas.clientHeight);
     const freeAspect = canvasAspect * this.uncovered;
     const d = Math.max(
-      (DIM.sleeve * 1.45) / (2 * tan),
-      (DIM.sleeve * 1.3) / (2 * tan * Math.max(freeAspect, 0.2)),
+      (DIM.sleeve * 1.65) / (2 * tan),
+      (DIM.sleeve * 1.4) / (2 * tan * Math.max(freeAspect, 0.2)),
     );
     const forward = cam.getWorldDirection(new Vector3());
     const position = cam.position.clone().addScaledVector(forward, d);
     const toCam = forward.clone().negate();
     const up = new Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    // Turned a little, as you would hold it: the spine edge catches the light.
+    toCam.applyAxisAngle(up, flipped ? 0.1 : -0.1);
     const x = flipped ? toCam.clone().negate() : toCam;
     const z = new Vector3().crossVectors(x, up).normalize();
     const y = new Vector3().crossVectors(z, x).normalize();
@@ -323,16 +332,16 @@ export class Stage {
     this.refreshStates();
     const out = this.shelfPose(i, 0.26);
     out.quaternion = new Quaternion();
-    await this.tweens.to(hero.sleeve, out, 340, { curve: ease.out });
+    await this.move(hero.sleeve, out, 340, { curve: ease.out });
     if (this.hero?.hero !== hero) return;
-    await this.tweens.to(hero.sleeve, this.presentPose(false), 620, { arc: 0.04 });
+    await this.move(hero.sleeve, this.presentPose(false), 620, { arc: 0.04 });
   }
 
   /** Shows the other side of the sleeve. */
   async flip(): Promise<boolean> {
     if (!this.hero) return false;
     this.hero.flipped = !this.hero.flipped;
-    await this.tweens.to(this.hero.hero.sleeve, this.presentPose(this.hero.flipped), 520, {
+    await this.move(this.hero.hero.sleeve, this.presentPose(this.hero.flipped), 520, {
       arc: 0.03,
     });
     return this.hero.flipped;
@@ -347,8 +356,8 @@ export class Stage {
     if (i !== undefined && this.sleeves) {
       const out = this.shelfPose(i, 0.26);
       out.quaternion = new Quaternion();
-      await this.tweens.to(held.hero.sleeve, out, 480, { arc: 0.03 });
-      await this.tweens.to(held.hero.sleeve, this.shelfPose(i), 300, { curve: ease.out });
+      await this.move(held.hero.sleeve, out, 480, { arc: 0.03 });
+      await this.move(held.hero.sleeve, this.shelfPose(i), 300, { curve: ease.out });
     }
     held.hero.group.removeFromParent();
     held.hero.dispose();
@@ -368,7 +377,7 @@ export class Stage {
     const disc = held.hero.record;
     disc.visible = true;
     // Out through the open edge (the sleeve's -z side).
-    await this.tweens.to(
+    await this.move(
       disc,
       { position: new Vector3(0, 0, -0.2), quaternion: disc.quaternion.clone() },
       520,
@@ -379,28 +388,27 @@ export class Stage {
     // Off to the platter, keeping where it is in the world as it changes parent.
     this.world.scene.attach(disc);
     const pose = this.turntable.recordPose();
-    this.rig.lookAt(
-      this.turntable.group.position.x - 0.3,
-      this.turntable.group.position.y + 0.05,
-      1.6,
-    );
+    this.rig.lookAt(this.turntable.group.position.x, this.turntable.group.position.y + 0.05, 1.6);
     const lifted = {
       position: pose.position.clone().add(new Vector3(0, 0.12, 0.05)),
       quaternion: pose.quaternion,
     };
     const homeOld = old ? this.sendHome(old) : Promise.resolve();
-    await this.tweens.to(disc, lifted, 820, { arc: 0.18 });
-    await this.tweens.to(disc, pose, 300, { curve: ease.out });
+    await this.move(disc, lifted, 820, { arc: 0.18 });
+    await this.move(disc, pose, 300, { curve: ease.out });
     this.turntable.load(disc);
     await Promise.all([this.placeStanding(held.hero, true), homeOld]);
     this.refreshHidden();
+    // Step back to see the shelf with the record turning on top.
+    this.rig.overview();
+    this.world.wake(1500);
   }
 
   private async sendHome(standing: { id: string; hero: Hero }): Promise<void> {
     const i = this.indexOf.get(standing.id);
     if (i !== undefined && this.sleeves) {
-      await this.tweens.to(standing.hero.sleeve, this.shelfPose(i, 0.2), 700, { arc: 0.1 });
-      await this.tweens.to(standing.hero.sleeve, this.shelfPose(i), 260);
+      await this.move(standing.hero.sleeve, this.shelfPose(i, 0.2), 700, { arc: 0.1 });
+      await this.move(standing.hero.sleeve, this.shelfPose(i), 260);
     }
     standing.hero.group.removeFromParent();
     standing.hero.dispose();
@@ -433,7 +441,7 @@ export class Stage {
       hero.sleeve.quaternion.copy(quaternion);
       return Promise.resolve();
     }
-    return this.tweens.to(hero.sleeve, pose, 900, { arc: 0.12 });
+    return this.move(hero.sleeve, pose, 900, { arc: 0.12 });
   }
 
   /** Takes the record off the turntable (playback stopped and the deck closed). */

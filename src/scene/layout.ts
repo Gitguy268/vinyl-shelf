@@ -49,6 +49,8 @@ export interface ShelfLayout {
   cubes: { x: number; y: number }[];
   /** Index of the first slot of each album, by album index. */
   slotOf: number[];
+  /** Cubes with no records in them. */
+  spare: number[];
 }
 
 /** How thick a record's sleeve is: a single LP, or a gatefold of two or three. */
@@ -66,18 +68,20 @@ export function thicknessOf(album: Album): number {
 
 const DIVIDER = 0.0016;
 
-/** Records per cube the shelf aims for: full enough to look loved, loose enough to lean. */
-export const PER_CUBE = 52;
+/** How full a cube is filled before the next one starts: snug, with room to pull a record out. */
+export const FILL = 0.86;
 
-export function shelfSize(count: number): { rows: number; cols: number } {
-  const cubes = Math.max(4, Math.ceil(count / PER_CUBE));
-  const rows = cubes <= 4 ? 2 : 4;
-  return { rows, cols: Math.max(2, Math.ceil(cubes / rows)) };
+/** A shelf with room for `cubes` cubes of records, and at least one spare for decoration. */
+export function shelfSize(cubes: number): { rows: number; cols: number } {
+  const want = Math.max(4, cubes < 12 ? cubes + 1 : cubes);
+  const rows = want <= 6 ? 2 : 4;
+  return { rows, cols: Math.max(2, Math.ceil(want / rows)) };
 }
 
 /**
- * Fills the cubes column by column, top row first (the way people fill a shelf at eye level),
- * left to right inside a cube. A cube that is not full leans its records to the right.
+ * Fills the cubes like a page: the top row left to right, then the next row down; inside a cube
+ * from left to right. A cube that is not full leans its records to the right. Cubes left over
+ * hold things that are not records (see `spare`).
  */
 export function layoutShelf(albums: readonly Album[], sort: SortKey, dividers = true): ShelfLayout {
   const items: { album: number; label: string; t: number }[] = [];
@@ -88,39 +92,27 @@ export function layoutShelf(albums: readonly Album[], sort: SortKey, dividers = 
     last = d;
     items.push({ album: i, label: '', t: thicknessOf(album) });
   });
-  const total = items.reduce((s, it) => s + it.t, 0);
-  const size = shelfSize(albums.length);
   const room = DIM.cube - DIM.slack;
-  // Cut the run of items into cubes, spread evenly so the last ones are not left empty. When a
-  // full library needs more cubes than planned (thick box sets), the shelf gets another column.
-  let cols = size.cols;
-  const rows = size.rows;
-  let groups: (typeof items)[];
-  for (;;) {
-    const nCubes = rows * cols;
-    const perCube = Math.min(room, Math.max(total / nCubes, room * 0.35));
-    groups = [];
-    let cur: typeof items = [];
-    let fill = 0;
-    for (const it of items) {
-      const full = fill + it.t > room || (fill >= perCube && groups.length < nCubes - 1);
-      if (full && cur.length > 0) {
-        groups.push(cur);
-        cur = [];
-        fill = 0;
-      }
-      cur.push(it);
-      fill += it.t;
+  const perCube = room * FILL;
+  const groups: (typeof items)[] = [];
+  let cur: typeof items = [];
+  let fill = 0;
+  for (const it of items) {
+    if (fill + it.t > perCube && cur.length > 0) {
+      groups.push(cur);
+      cur = [];
+      fill = 0;
     }
-    if (cur.length > 0) groups.push(cur);
-    if (groups.length <= nCubes) break;
-    cols++;
+    cur.push(it);
+    fill += it.t;
   }
+  if (cur.length > 0) groups.push(cur);
+  const { rows, cols } = shelfSize(groups.length);
   const width = cols * DIM.cube + (cols - 1) * DIM.board + 2 * DIM.frame;
   const height = rows * DIM.cube + (rows - 1) * DIM.board + 2 * DIM.frame + DIM.foot;
   const cubes: { x: number; y: number }[] = [];
-  for (let c = 0; c < cols; c++)
-    for (let r = rows - 1; r >= 0; r--)
+  for (let r = rows - 1; r >= 0; r--)
+    for (let c = 0; c < cols; c++)
       cubes.push({
         x: -width / 2 + DIM.frame + c * (DIM.cube + DIM.board),
         y: DIM.foot + DIM.frame + r * (DIM.cube + DIM.board),
@@ -131,12 +123,12 @@ export function layoutShelf(albums: readonly Album[], sort: SortKey, dividers = 
     const cube = cubes[Math.min(g, cubes.length - 1)]!;
     const T = group.reduce((s, it) => s + it.t, 0);
     const free = Math.max(0, DIM.cube - T - 0.002);
-    // Lean: the tops slide right until the free space is used, never more than about 24 degrees.
+    // Lean: the tops slide right until the free space is used, never more than about 17 degrees.
     const h = DIM.sleeve;
     // The widest point is the last record's top corner: T / cos(a) + h sin(a) must fit the cube.
     const span = (a: number): number => 0.001 + T / Math.cos(a) + h * Math.sin(a);
     let lo = 0;
-    let hi = free > 0.004 ? Math.min(Math.asin(Math.min(1, free / h)), 0.42) : 0;
+    let hi = free > 0.004 ? Math.min(Math.asin(Math.min(1, free / h)), 0.3) : 0;
     for (let i = 0; i < 24 && span(hi) > DIM.cube - 0.001; i++) {
       const mid = (lo + hi) / 2;
       if (span(mid) > DIM.cube - 0.001) hi = mid;
@@ -168,5 +160,6 @@ export function layoutShelf(albums: readonly Album[], sort: SortKey, dividers = 
       slots.push(slot);
     }
   });
-  return { rows, cols, width, height, slots, cubes, slotOf };
+  const spare = cubes.map((_, i) => i).filter((i) => i >= groups.length);
+  return { rows, cols, width, height, slots, cubes, slotOf, spare };
 }

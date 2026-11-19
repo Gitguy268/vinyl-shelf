@@ -40,8 +40,8 @@ export class Rig {
       y1: Math.max(0.3, layout.height + 0.05),
       near: 0.5,
       far: Math.max(
-        1.5,
-        Math.min(this.fitDistance(layout.width + margin, layout.height + 0.6), 5.5),
+        1.3,
+        Math.min(this.fitDistance(layout.width + margin, layout.height + 0.35), 5.5),
       ),
     };
     if (!reset) {

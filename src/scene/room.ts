@@ -92,7 +92,7 @@ export class Room {
       m.castShadow = m !== shade;
       this.lampGroup.add(m);
     }
-    this.lamp = new SpotLight('#ffcf9a', 9, 6, 1.2, 0.85, 1.6);
+    this.lamp = new SpotLight('#ffcf9a', 6, 6, 1.25, 1, 1.6);
     this.lamp.position.set(0, 1.5, 0);
     this.lamp.castShadow = true;
     this.lamp.shadow.mapSize.set(1024, 1024);
@@ -118,8 +118,8 @@ export class Room {
   /** Puts the lamp beside the shelf and aims the window light at it. */
   fit(layout: ShelfLayout): void {
     const left = -layout.width / 2;
-    this.lampGroup.position.set(left - 0.5, 0, 0.42);
-    this.lamp.target.position.set(0.55, 0.4, -0.25);
+    this.lampGroup.position.set(left - 0.5, 0, 0.7);
+    this.lamp.target.position.set(0.7, 0.25, 0.1);
     this.sun.position.set(layout.width / 2 + 2.5, 3.2, 3.4);
     this.sun.target.position.set(0, layout.height / 2, 0);
     const cam = this.sun.shadow.camera;
@@ -139,8 +139,8 @@ export class Room {
     this.sun.intensity = dusk ? 0.45 : 2.6;
     this.hemi.intensity = dusk ? 0.18 : 0.75;
     this.hemi.color.set(dusk ? '#9fb3d9' : '#f4ead9');
-    this.lamp.intensity = dusk ? 11 : 3;
-    this.glow.intensity = dusk ? 1.4 : 0.4;
+    this.lamp.intensity = dusk ? 6.5 : 2;
+    this.glow.intensity = dusk ? 0.55 : 0.2;
     this.shade.emissiveIntensity = dusk ? 1.6 : 0.35;
     this.wall.color.set(dusk ? '#e3d6c4' : '#f2ebe0');
   }

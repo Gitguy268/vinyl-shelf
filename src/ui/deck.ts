@@ -53,6 +53,10 @@ export class Deck {
     this.handoff.events.on('state', (s) => this.onState(s));
   }
 
+  get isPlaying(): boolean {
+    return this.playing;
+  }
+
   get open(): boolean {
     return this.album !== null;
   }

@@ -1,6 +1,5 @@
 import {
   ACESFilmicToneMapping,
-  Clock,
   HalfFloatType,
   PCFShadowMap,
   PerspectiveCamera,
@@ -32,7 +31,8 @@ export class World {
   private composer: EffectComposer;
   private ao: GTAOPass | null = null;
   private bloom: UnrealBloomPass;
-  private clock = new Clock();
+  private last = 0;
+  private elapsed = 0;
   private awake = 0;
   private raf = 0;
   private tickers = new Set<(dt: number, t: number) => boolean>();
@@ -107,7 +107,7 @@ export class World {
   wake(ms = 120): void {
     this.awake = Math.max(this.awake, performance.now() + ms);
     if (!this.raf) {
-      this.clock.getDelta();
+      this.last = performance.now();
       this.raf = requestAnimationFrame(this.frame);
     }
   }
@@ -125,8 +125,11 @@ export class World {
 
   private frame = (): void => {
     this.raf = 0;
-    const dt = Math.min(this.clock.getDelta(), 0.05);
-    const t = this.clock.elapsedTime;
+    const now = performance.now();
+    const dt = Math.min((now - this.last) / 1000, 0.05);
+    this.last = now;
+    this.elapsed += dt;
+    const t = this.elapsed;
     let busy = false;
     for (const fn of this.tickers) if (fn(dt, t)) busy = true;
     this.composer.render(dt);

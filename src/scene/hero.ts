@@ -19,8 +19,15 @@ import { recordFace } from './textures';
 export const RECORD_RADIUS = 0.1505;
 const RECORD_THICK = 0.0018;
 
+/** A texture from a canvas or a decoded image (drawn through a canvas: WebGL ignores flipY for bitmaps). */
 function tex(c: HTMLCanvasElement | ImageBitmap): Texture {
-  const t = new CanvasTexture(c as HTMLCanvasElement);
+  let source: HTMLCanvasElement;
+  if (c instanceof HTMLCanvasElement) source = c;
+  else {
+    source = canvas(c.width, c.height);
+    ctx2d(source).drawImage(c, 0, 0);
+  }
+  const t = new CanvasTexture(source);
   t.colorSpace = SRGBColorSpace;
   t.anisotropy = 8;
   return t;
@@ -31,11 +38,11 @@ export function makeRecord(label: HTMLCanvasElement | null, labelColour: string)
   const face = recordFace(label, labelColour);
   const vinyl = new MeshPhysicalMaterial({
     map: face,
-    roughness: 0.38,
+    roughness: 0.42,
     metalness: 0,
-    clearcoat: 0.9,
-    clearcoatRoughness: 0.25,
-    sheen: 0.2,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.35,
+    envMapIntensity: 0.35,
   });
   const edge = new MeshStandardMaterial({ color: '#0a0a0b', roughness: 0.4 });
   const m = new Mesh(new CylinderGeometry(RECORD_RADIUS, RECORD_RADIUS, RECORD_THICK, 128), [

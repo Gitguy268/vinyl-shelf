@@ -166,7 +166,7 @@ export class App {
     const lib = this.library;
     const tracks = this.albums.reduce((n, a) => n + a.tracks.length, 0);
     byId('folder-info').textContent = lib.demo
-      ? 'The demo shelf: thirty made-up records with short synthesized tunes.'
+      ? 'The demo shelf: 150 made-up records with short synthesized tunes.'
       : this.albums.length === 0
         ? 'No folder yet.'
         : `${lib.folderName ? `“${lib.folderName}”: ` : ''}${plural(this.albums.length, 'album')}, ${plural(tracks, 'track')}. Only tags and small covers are kept in this browser.`;
@@ -485,7 +485,8 @@ export class App {
       this.layoutPanels();
       await this.stage?.playHeld();
     }
-    this.stage?.setPlaying(album.id, false);
+    // The player may have started while the record was on its way.
+    this.stage?.setPlaying(album.id, this.deck.isPlaying);
   }
 
   // ─── Deck ───────────────────────────────────────────────────────

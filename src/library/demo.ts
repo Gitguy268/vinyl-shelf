@@ -3,7 +3,7 @@ import { groupAlbums } from './group';
 import type { Album, TrackInfo } from './types';
 
 /**
- * The demo shelf: thirty made-up records (every name is invented) whose tracks are short tunes
+ * The demo shelf: 150 made-up records (every name is invented) whose tracks are short tunes
  * synthesized on the spot when one is played. Nothing is fetched and nothing is stored.
  */
 const RECORDS: [artist: string, title: string, year: number, genre: string][] = [
@@ -38,6 +38,133 @@ const RECORDS: [artist: string, title: string, year: number, genre: string][] = 
   ['Various Artists', 'Late Night Radio, Vol. 2', 1990, 'Compilation'],
   ['Holloway Strings', 'Autumn Études', 1960, 'Classical'],
 ];
+
+/** More made-up records, built from word lists so the demo shelf looks lived in. */
+const FIRST = [
+  'Wren',
+  'Otis',
+  'Juno',
+  'Lev',
+  'Marisol',
+  'Tobin',
+  'Ines',
+  'Caspian',
+  'Della',
+  'Ezra',
+  'Noor',
+  'Rufus',
+  'Sabine',
+  'Idris',
+  'Pernille',
+  'Quentin',
+  'Talia',
+  'Bartholomew',
+  'Signe',
+  'Amadou',
+];
+const LAST = [
+  'Halloran',
+  'Vasquez-Lind',
+  'Okafor',
+  'Brightwater',
+  'Szabo',
+  'Marchetti',
+  'Lindqvist',
+  'Featherstone',
+  'Achterberg',
+  'Moreno',
+  'Kowalczyk',
+  'Abernathy',
+  'Delacroix',
+  'Nakamura-Hale',
+  'Thistlewood',
+  'Ferreira',
+];
+const BAND_ADJ = [
+  'Paper',
+  'Velvet',
+  'Hollow',
+  'Quiet',
+  'Electric',
+  'Copper',
+  'Midnight',
+  'Gentle',
+  'Sunken',
+  'Lunar',
+  'Wandering',
+  'Tangerine',
+  'Glass',
+  'Northern',
+  'Sleepy',
+];
+const BAND_NOUN = [
+  'Lanterns',
+  'Herons',
+  'Orchards',
+  'Satellites',
+  'Ferries',
+  'Telegrams',
+  'Mopeds',
+  'Gardeners',
+  'Radiators',
+  'Chimneys',
+  'Kites',
+  'Lighthouses',
+  'Typewriters',
+  'Swallows',
+  'Archives',
+];
+const GENRES = [
+  'Jazz',
+  'Soul',
+  'Folk',
+  'Rock',
+  'Electronic',
+  'Funk',
+  'Indie',
+  'Ambient',
+  'Disco',
+  'Blues',
+  'Bossa nova',
+  'Synth-pop',
+  'Post-punk',
+  'Country',
+  'Classical',
+  'Afrobeat',
+];
+
+function moreRecords(n: number): [string, string, number, string][] {
+  const rand = rng(1966);
+  const pick = <T>(list: readonly T[]): T => list[Math.floor(rand() * list.length)]!;
+  const out: [string, string, number, string][] = [];
+  const seen = new Set(RECORDS.map((r) => r[0] + r[1]));
+  while (out.length < n) {
+    const artist =
+      rand() < 0.45
+        ? `${pick(FIRST)} ${pick(LAST)}`
+        : rand() < 0.5
+          ? `The ${pick(BAND_ADJ)} ${pick(BAND_NOUN)}`
+          : `${pick(BAND_ADJ)} ${pick(BAND_NOUN)}`;
+    const form = pick([
+      '{a} {b}',
+      '{b}',
+      'Songs from the {b}',
+      'The {a} Sessions',
+      '{a} {b}, Vol. 2',
+      'Live at the {b}',
+      '{b} and {b2}',
+    ]);
+    const title = form
+      .replace('{a}', pick(WORDS_A))
+      .replace('{b}', pick(WORDS_B))
+      .replace('{b2}', pick(WORDS_B));
+    const key = artist + title;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push([artist, title, 1955 + Math.floor(rand() * 70), pick(GENRES)]);
+  }
+  return out;
+}
 
 const WORDS_A = [
   'Lantern',
@@ -108,7 +235,8 @@ export function moodOf(genre: string): { bpm: number; root: number; swing: boole
 
 export function demoTracks(): TrackInfo[] {
   const out: TrackInfo[] = [];
-  RECORDS.forEach(([artist, album, year, genre], i) => {
+  const all = [...RECORDS, ...moreRecords(120)];
+  all.forEach(([artist, album, year, genre], i) => {
     const rand = rng(seedOf(album));
     const count = 5 + Math.floor(rand() * 5);
     const folder = `${DEMO_PREFIX}${artist}/${album}`;
@@ -124,7 +252,7 @@ export function demoTracks(): TrackInfo[] {
         size: seconds * 22050 * 2 + 44,
         mtime: Date.UTC(2026, 0, 1) + i * 86_400_000,
         title,
-        artist: various ? RECORDS[(i + n * 7) % RECORDS.length]![0] : artist,
+        artist: various ? all[(i + n * 7) % all.length]![0] : artist,
         albumArtist: artist,
         album,
         trackNo: n,
@@ -144,18 +272,55 @@ export function demoAlbums(): Album[] {
   return groupAlbums(demoTracks());
 }
 
+/** A RIFF LIST/INFO chunk: title, artist, album, year and genre, for players that read WAV tags. */
+function infoChunk(track: TrackInfo): Uint8Array {
+  const fields: [string, string][] = [
+    ['INAM', track.title],
+    ['IART', track.artist],
+    ['IPRD', track.album],
+    ['ICRD', track.year ? String(track.year) : ''],
+    ['IGNR', track.genre],
+    ['ITRK', track.trackNo ? String(track.trackNo) : ''],
+  ];
+  const enc = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  for (const [id, value] of fields) {
+    if (!value) continue;
+    const text = enc.encode(value + '\0');
+    const size = text.length;
+    const chunk = new Uint8Array(8 + size + (size % 2));
+    chunk.set(enc.encode(id), 0);
+    new DataView(chunk.buffer).setUint32(4, size, true);
+    chunk.set(text, 8);
+    parts.push(chunk);
+  }
+  const body = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(12 + body);
+  out.set(enc.encode('LIST'), 0);
+  new DataView(out.buffer).setUint32(4, 4 + body, true);
+  out.set(enc.encode('INFO'), 8);
+  let at = 12;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
 /** One demo track as a WAV file: kick, bass, an arpeggio and hats in the album's mood. */
 export function demoFile(track: TrackInfo): File {
   const sr = 22050;
   const seconds = track.durationSec ?? 30;
   const n = Math.floor(seconds * sr);
-  const buf = new ArrayBuffer(44 + n * 2);
+  const info = infoChunk(track);
+  const head = 36 + info.length;
+  const buf = new ArrayBuffer(head + 8 + n * 2);
   const v = new DataView(buf);
   const text = (at: number, s: string): void => {
     for (let i = 0; i < s.length; i++) v.setUint8(at + i, s.charCodeAt(i));
   };
   text(0, 'RIFF');
-  v.setUint32(4, 36 + n * 2, true);
+  v.setUint32(4, head + n * 2, true);
   text(8, 'WAVEfmt ');
   v.setUint32(16, 16, true);
   v.setUint16(20, 1, true);
@@ -164,8 +329,11 @@ export function demoFile(track: TrackInfo): File {
   v.setUint32(28, sr * 2, true);
   v.setUint16(32, 2, true);
   v.setUint16(34, 16, true);
-  text(36, 'data');
-  v.setUint32(40, n * 2, true);
+  new Uint8Array(buf).set(info, 36);
+  const data = 36 + info.length;
+  text(data, 'data');
+  v.setUint32(data + 4, n * 2, true);
+  const pcm = data + 8;
   const mood = moodOf(track.genre);
   const rand = rng(seedOf(track.path));
   const bpm = mood.bpm * (0.92 + rand() * 0.16);
@@ -197,8 +365,9 @@ export function demoFile(track: TrackInfo): File {
       (Math.sin(TAU * note * t) + 0.3 * Math.sin(TAU * note * 2 * t)) * Math.exp(-ts * 6) * 0.18;
     const hat = (rand() * 2 - 1) * Math.exp(-(((b * 2 + 1) % 2) * beat) * 30) * 0.06;
     const x = (kick + bass + arp + hat) * fade;
-    v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 28000, true);
+    v.setInt16(pcm + i * 2, Math.max(-1, Math.min(1, x)) * 28000, true);
   }
-  const name = track.path.slice(track.path.lastIndexOf('/') + 1);
+  // Named by title alone: players that cannot read WAV tags show the file name.
+  const name = `${track.title.replace(/[\\/:*?"<>|]/g, '')}.wav`;
   return new File([new Uint8Array(buf)], name, { type: 'audio/wav', lastModified: track.mtime });
 }
