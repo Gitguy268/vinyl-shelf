@@ -37,10 +37,15 @@ const clean = (s: unknown): string => (typeof s === 'string' ? s.replace(/\0/g, 
  * The tags of one file; whatever is missing comes from its path. A file that will not parse still
  * gets a track. Cover art is skipped here (memory): readPicture reads it for one track per album.
  */
+/**
+ * `buffered` reads the whole file into memory first and parses the bytes: slower for big files,
+ * but it does not use the Blob's stream, which some engines stall on for some MP4 layouts.
+ */
 export async function readTags(
   file: File,
   path: string,
   timeoutMs = TIMEOUT_MS,
+  buffered = false,
 ): Promise<TrackInfo> {
   const guess = guessFromPath(path);
   const base: TrackInfo = {
@@ -60,11 +65,16 @@ export async function readTags(
     picture: false,
   };
   try {
-    const { parseBlob } = await load();
-    const meta = await withTimeout(
-      parseBlob(file, { skipCovers: true, skipPostHeaders: true }),
-      timeoutMs,
-    );
+    const { parseBlob, parseBuffer } = await load();
+    const options = { skipCovers: true, skipPostHeaders: true };
+    const parse = buffered
+      ? file
+          .arrayBuffer()
+          .then((b) =>
+            parseBuffer(new Uint8Array(b), { mimeType: file.type, size: file.size }, options),
+          )
+      : parseBlob(file, options);
+    const meta = await withTimeout(parse, timeoutMs);
     const c = meta.common;
     const year = c.year ?? (c.date ? Number.parseInt(c.date, 10) : NaN);
     return {

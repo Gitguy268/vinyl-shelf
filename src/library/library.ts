@@ -159,11 +159,12 @@ export class Library {
       busy.signal,
     );
     if (busy.signal.aborted) return;
-    // Files the parser ran out of time on (a slow machine, a busy page): once more, one at a time.
+    // Files the parser ran out of time on (a slow machine, a busy page, a stalled stream): once
+    // more, one at a time, from memory.
     for (const p of r.fresh) {
       const track = known.get(p.path);
       if (!track || !didTimeOut(track) || busy.signal.aborted) continue;
-      known.set(p.path, await readTags(p.file, p.path, 60_000));
+      known.set(p.path, await readTags(p.file, p.path, 60_000, p.file.size < 512 * 1024 * 1024));
     }
     if (busy.signal.aborted) return;
     for (const p of r.fresh) files.set(p.path, p.file);
