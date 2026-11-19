@@ -95,7 +95,7 @@ export function layoutShelf(albums: readonly Album[], sort: SortKey, dividers = 
   // full library needs more cubes than planned (thick box sets), the shelf gets another column.
   let cols = size.cols;
   const rows = size.rows;
-  let groups: (typeof items)[] = [];
+  let groups: (typeof items)[];
   for (;;) {
     const nCubes = rows * cols;
     const perCube = Math.min(room, Math.max(total / nCubes, room * 0.35));

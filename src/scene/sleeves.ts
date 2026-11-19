@@ -252,11 +252,11 @@ export class Sleeves {
     this.outTarget.fill(0);
   }
 
-  setHidden(album: number | null): void {
+  /** Records taken off the shelf (in your hands, or standing by the turntable) are not drawn here. */
+  setHidden(albums: readonly number[]): void {
     const before = [...this.hidden];
-    this.hidden.clear();
-    if (album !== null) this.hidden.add(album);
-    for (const a of [...before, ...this.hidden]) this.place(a);
+    this.hidden = new Set(albums.filter((a) => a >= 0 && a < this.out.length));
+    for (const a of [...before, ...this.hidden]) if (a < this.out.length) this.place(a);
     for (const b of this.batches) b.mesh.instanceMatrix.needsUpdate = true;
   }
 
