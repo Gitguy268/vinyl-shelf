@@ -29,6 +29,9 @@ function licences(): Plugin {
     apply: 'build',
     closeBundle() {
       for (const f of ['LICENSE', 'NOTICE']) copyFileSync(f, `dist/${f}`);
+      // Some hosts do not serve files without an extension.
+      copyFileSync('LICENSE', 'dist/LICENSE.txt');
+      copyFileSync('NOTICE', 'dist/NOTICE.txt');
     },
   };
 }
